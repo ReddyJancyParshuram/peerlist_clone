@@ -98,6 +98,16 @@ cd frontend
 npm run build
 ```
 
+## Deployment
+
+Recommended free deployment setup:
+
+- Frontend: Vercel
+- Backend: Render
+- Database: Neon PostgreSQL
+
+See `DEPLOYMENT.md` for step-by-step deployment instructions.
+
 ## Notes
 
 - SQLite database files are kept locally in `backend/` and are ignored by git

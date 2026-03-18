@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -11,6 +13,9 @@ models.Base.metadata.create_all(bind=database.engine)
 
 
 def ensure_column(table_name: str, column_name: str, definition: str):
+    if not str(database.SQLALCHEMY_DATABASE_URL).startswith("sqlite"):
+        return
+
     with database.engine.begin() as connection:
         existing_columns = {
             row[1] for row in connection.execute(text(f"PRAGMA table_info({table_name})"))
@@ -35,8 +40,8 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException, status, Depends
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
-SECRET_KEY = "peerlist_clone_secret_key"
-ALGORITHM = "HS256"
+SECRET_KEY = os.getenv("SECRET_KEY", "peerlist_clone_secret_key")
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
@@ -83,11 +88,16 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 # Allow CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust in production
+    allow_origins=[origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 @app.post("/signup", response_model=schemas.Token)
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
